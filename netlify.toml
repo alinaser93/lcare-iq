@@ -3,16 +3,16 @@
 [build]
   publish = "."
 
-# Explicit functions directory (more reliable than putting it under [build])
+# Standard (Lambda) functions directory — still used for any non-AI function
 [functions]
   directory = "netlify/functions"
 
-# Pretty endpoint: frontend calls /api/claude → function
-[[redirects]]
-  from = "/api/claude"
-  to = "/.netlify/functions/claude"
-  status = 200
-  force = true
+# ── /api/claude is served by an Edge Function (no 10s timeout) ──
+# The function file (netlify/edge-functions/claude.js) also declares
+# its own path via `config.path`; this block makes it explicit.
+[[edge_functions]]
+  path = "/api/claude"
+  function = "claude"
 
 # Security headers
 [[headers]]
