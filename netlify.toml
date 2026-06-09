@@ -1,0 +1,23 @@
+# netlify.toml — LCare IQ deployment config
+
+[build]
+  publish = "."
+
+# Explicit functions directory (more reliable than putting it under [build])
+[functions]
+  directory = "netlify/functions"
+
+# Pretty endpoint: frontend calls /api/claude → function
+[[redirects]]
+  from = "/api/claude"
+  to = "/.netlify/functions/claude"
+  status = 200
+  force = true
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
