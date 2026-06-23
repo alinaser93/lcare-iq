@@ -178,24 +178,49 @@
 <button class="lcare-fab-theme" id="lcare-fab-theme" title="الوضع الليلي / النهاري" onclick="window.lcareToggleTheme()"><span id="lcare-theme-icon">🌙</span><span class="lbl" id="lcare-theme-lbl">ليلي</span></button>
 
 <script>
-/* Bulletproof modal centering — forces any full-screen overlay (zIndex 9999)
-   to fill the viewport and center its content, via !important inline styles
-   that override everything. Immune to CSS shorthand quirks. */
+/* ════════ Bulletproof full-screen modal positioning ════════
+   Some ancestor (backdrop-filter / transform / filter) turns `position:fixed`
+   into "relative to that ancestor" instead of the viewport, so the dialog lands
+   in the wrong spot. The only reliable cure is to move the overlay to be a direct
+   child of <body>, escaping every containing block. To keep React from crashing
+   when it later removes a node we moved, we install the well-known removeChild /
+   insertBefore safety shim (same one used for Google-Translate compatibility). */
 (function(){
-  function forceCenter(el){
+  // 1) React-safe DOM shim: don't throw if a node was relocated
+  if (typeof Node === "function" && Node.prototype) {
+    var _removeChild = Node.prototype.removeChild;
+    Node.prototype.removeChild = function(child){
+      if (child.parentNode !== this) { if (child.parentNode) child.parentNode.removeChild(child); return child; }
+      return _removeChild.apply(this, arguments);
+    };
+    var _insertBefore = Node.prototype.insertBefore;
+    Node.prototype.insertBefore = function(newNode, referenceNode){
+      if (referenceNode && referenceNode.parentNode !== this) { if (newNode.parentNode) newNode.parentNode.removeChild(newNode); return newNode; }
+      return _insertBefore.apply(this, arguments);
+    };
+  }
+  // 2) Move any full-screen overlay (zIndex 9999, fixed) to <body>, then pin it to the viewport
+  function pin(el){
+    // Only pin to the viewport; DON'T touch display/align/justify so each overlay
+    // keeps its own layout (confirm dialog centers itself; charts panel scrolls as a column).
     var s = el.style, set = function(k,v){ s.setProperty(k,v,"important"); };
     set("position","fixed"); set("top","0"); set("left","0"); set("right","0"); set("bottom","0");
     set("width","100%"); set("height","100%"); set("margin","0");
-    set("display","flex"); set("align-items","center"); set("justify-content","center");
   }
-  function check(n){ if(n && n.nodeType===1 && n.style && n.style.position==="fixed" && n.style.zIndex==="9999") forceCenter(n); }
+  function handle(n){
+    if(!(n && n.nodeType===1 && n.style)) return;
+    if(n.style.position==="fixed" && n.style.zIndex==="9999"){
+      if(n.parentNode !== document.body){ try { document.body.appendChild(n); } catch(e){} }
+      pin(n);
+    }
+  }
   function start(){
     try {
       var obs = new MutationObserver(function(muts){
-        for(var i=0;i<muts.length;i++){ var a=muts[i].addedNodes; for(var j=0;j<a.length;j++) check(a[j]); }
+        for(var i=0;i<muts.length;i++){ var a=muts[i].addedNodes; for(var j=0;j<a.length;j++) handle(a[j]); }
       });
       obs.observe(document.body, {childList:true, subtree:true});
-    } catch(e) { console.error("modal safeguard:", e); }
+    } catch(e) { console.error("modal positioning:", e); }
   }
   if(document.body) start(); else window.addEventListener("DOMContentLoaded", start);
 })();
